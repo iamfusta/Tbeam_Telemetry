@@ -24,7 +24,7 @@ GPS (Global Positioning System)
 GLONASS (GLObal NAvigation Satellite System)
 QZSS (Quasi-Zenith Satellite System)
 
-Eski kodda sat 6, hdop 1.2 bu çok yi doğruluk seviyesinde. ölçümlerin evde cam dibinde yapıldığı düşünülürse çok iyi.
+Eski kodda sat 6, hdop 1.2 bu çok iyi doğruluk seviyesinde. ölçümlerin evde cam dibinde yapıldığı düşünülürse çok iyi.
 Şimdi: sat 10, hdop 0.95 mükemmel doğruluk seviyesi
 sat 9, hdop 1.15 çok doğruluk seviyesi
 sat 8, hdop 1.40-1.50 çok iyi doğruluk seviyesi
