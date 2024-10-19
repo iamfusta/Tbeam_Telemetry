@@ -1,37 +1,39 @@
 /*
-100 saatten uzun test edildi.
-GPS 10 hz komutunu çıkarttım
-gps update 2 hz ile değiştirdim.
---->bunun kötü yanı mpu sensörü verileri kötüleşti.
---->iyi yanı gps boş işlemleri azaltıldı.
-olması gereken mpu çalışma yüksek kalmalı.
-gps çalışma 2 hz kalmalı 
-MÜMKÜNSE gnss çalışma 5hz için bir deneme daha yapılmalı.
-Oluşturulan dosya isimleri unique hale getirilmeli
-sensörler fazla akım çektiği için diye tahmin ediyorum sorunlar yaşadım ve harici 5v ile beslemeleri yaptım
- 
-UPDATE= cold start 3 dakika sürüyor almanac verileri kaydediliyor mu diye kontrol etmemiz gerek.
-Cold start sonrası sat 10, hdop 0.95 ile konum almaya başladık.
+100 saatten fazla test edildi.
+GPS 10 Hz komutu çıkartıldı.
+GPS güncellemesi 2 Hz ile değiştirildi.
+---> Bunun kötü yanı, MPU sensörünün verilerinin kalitesinin düşmesi oldu.
+---> İyi yanı ise, GPS'in boş işlemleri azaltıldı.
 
-Yeni config: GPS+Galileo+GLONASS+SBAS
+MPU sensörünün çalışma frekansı yüksek kalmalı.
+GPS çalışma frekansı 2 Hz olmalı.
+Mümkünse GNSS çalışma frekansı 5 Hz olacak şekilde bir deneme daha yapılmalı.
+Oluşturulan dosya isimleri benzersiz hale getirilmeli.
+Sensörlerin fazla akım çektiğini düşündüğüm için bazı sorunlar yaşandı ve bu yüzden harici 5V ile beslemeleri sağladım.
+
+UPDATE: Cold start 3 dakika sürüyor. Almanak verilerinin kaydedilip kaydedilmediğini kontrol etmemiz gerek.
+Cold start sonrası 10 uydu ile, HDOP 0.95 seviyesinde konum almaya başladık.
+
+Yeni konfigürasyon: GPS + Galileo + GLONASS + SBAS
 GPS: Amerika Birleşik Devletleri tarafından işletilen küresel konumlama sistemi.
 Galileo: Avrupa Birliği tarafından işletilen küresel uydu navigasyon sistemi.
 GLONASS: Rusya tarafından işletilen küresel navigasyon uydu sistemi.
 SBAS (EGNOS): Avrupa Geostationary Navigation Overlay Service, doğruluk artırma sistemi.
 
-Eski config: GPS+GLONASS+QZSS
+Eski konfigürasyon: GPS + GLONASS + QZSS
 GPS (Global Positioning System)
 GLONASS (GLObal NAvigation Satellite System)
 QZSS (Quasi-Zenith Satellite System)
 
-Eski kodda sat 6, hdop 1.2 bu çok iyi doğruluk seviyesinde. ölçümlerin evde cam dibinde yapıldığı düşünülürse çok iyi.
-Şimdi: sat 10, hdop 0.95 mükemmel doğruluk seviyesi
-sat 9, hdop 1.15 çok doğruluk seviyesi
-sat 8, hdop 1.40-1.50 çok iyi doğruluk seviyesi
-sat 8, hdop 1.50-1.60 çok iyi doğruluk seviyesi
-sat 6, hdop 1.60-1.70 çok iyi doğruluk seviyesi
+Eski kodda 6 uydu ile, HDOP 1.2 seviyesinde bu çok iyi bir doğruluk seviyesi. Ölçümlerin evde cam kenarında yapıldığı düşünülürse oldukça iyi.
+Şu an:
+- 10 uydu, HDOP 0.95: Mükemmel doğruluk seviyesi
+- 9 uydu, HDOP 1.15: Çok iyi doğruluk seviyesi
+- 8 uydu, HDOP 1.40-1.50: Çok iyi doğruluk seviyesi
+- 8 uydu, HDOP 1.50-1.60: İyi doğruluk seviyesi
+- 6 uydu, HDOP 1.60-1.70: İyi doğruluk seviyesi
+*/
 
-*/ 
 
 #include <HardwareSerial.h>
 #include <TinyGPS++.h>
