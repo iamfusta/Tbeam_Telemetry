@@ -1,7 +1,7 @@
 /*
 100 saatten uzun test edildi.
 GPS 10 hz komutunu çıkarttım
-gps update sn'de 2 hz
+gps update 2 hz ile değiştirdim.
 --->bunun kötü yanı mpu sensörü verileri kötüleşti.
 --->iyi yanı gps boş işlemleri azaltıldı.
 olması gereken mpu çalışma yüksek kalmalı.
