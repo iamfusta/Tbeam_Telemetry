@@ -1,4 +1,5 @@
 /*
+txt dosya adı fixed.
 100 saatten fazla test edildi.
 GPS 10 Hz komutu çıkartıldı.
 GPS güncellemesi 2 Hz ile değiştirildi.
@@ -53,84 +54,46 @@ Eski kodda 6 uydu ile, HDOP 1.2 seviyesinde bu çok iyi bir doğruluk seviyesi. 
 #define HSPI_MOSI 13
 #define HSPI_CS 2
 
+// GPS için ikinci seri port tanımlanması
 HardwareSerial gpsSerial(1);
-TinyGPSPlus gps;
-SFE_UBLOX_GPS myGPS;
-Adafruit_MPU6050 mpu;
+TinyGPSPlus gps;  // GPS verilerini işlemek için TinyGPS++ kütüphanesi kullanılıyor
+SFE_UBLOX_GPS myGPS; // SparkFun UBlox GPS kütüphanesi
+Adafruit_MPU6050 mpu;  // MPU6050 sensörü
 
 unsigned long lastSatelliteHdopRead = 0; // Son uydu ve HDOP okuma zamanı
 int satellites = 0; // Uydu sayısı
 int hdop = 0; // HDOP değeri
-bool sdCardInitialized = false;
-File dataFile; // Dosya nesnesi
+bool sdCardInitialized = false;  // SD kartın başlatılıp başlatılmadığını kontrol eder
+File dataFile; // SD kart üzerindeki dosya nesnesi
+String currentFileName = "/gpsdata.txt"; // Oluşturulan dosyanın adı
 
+// GNSS verilerini tutmak için yapı tanımı
 struct Signal {
-    char lat[10];        // Enlem
-    char lng[10];        // Boylam
-    char altitude[10];   // Yükseklik
-    char speed[10];      // Hız
-    char satellites[4];  // Uydu sayısı
-    char hdop[5];        // HDOP
+    char lat[10];        // Enlem bilgisi
+    char lng[10];        // Boylam bilgisi
+    char altitude[10];   // Yükseklik bilgisi
+    char speed[10];      // Hız bilgisi
+    char satellites[4];  // Uydu sayısı bilgisi
+    char hdop[5];        // HDOP değeri
     char timestamp[20];  // Zaman damgası (T ve Z karakterleri olmadan)
-    float accelX, accelY, accelZ; // İvme verileri
-    float gyroX, gyroY, gyroZ;    // Gyro verileri
+    float accelX, accelY, accelZ; // İvme verileri (X, Y, Z)
+    float gyroX, gyroY, gyroZ;    // Gyro verileri (X, Y, Z)
 };
 
-Signal konum;
-
-// GNSS yapılandırmasını genişletmek için UBX-CFG-GNSS komutunu gönder
-void configureGNSS() {
-    uint8_t setNav5[] = {
-        0xB5, 0x62,  // Sync chars
-        0x06, 0x3E,  // Class and ID
-        0x24, 0x00,  // Length
-        0x00,        // msgVer
-        0x20,        // numTrkChHw (number of tracking channels)
-        0x00,        // numTrkChUse (number of tracking channels to use)
-        0x01, 0x00,  // gnssId, resTrkCh, maxTrkCh, reserved
-        0x01,        // GPS enabled
-        0x01,        // SBAS enabled
-        0x00, 0x00,  // reserved
-        0x02, 0x00,  // Galileo enabled
-        0x01, 0x00,  // reserved
-        0x04, 0x00,  // GLONASS enabled
-        0x01, 0x00,  // reserved
-        0x00, 0x00, 0x00, 0x00,  // reserved
-        0x00, 0x00, 0x00, 0x00,  // reserved
-        0x00, 0x00, 0x00, 0x00,  // reserved
-        0x00, 0x00, 0x00, 0x00,  // reserved
-        0x00, 0x00, 0x00, 0x00,  // reserved
-        0x00, 0x00, 0x00, 0x00,  // reserved
-        0x00, 0x00, 0x00, 0x00,  // reserved
-        0x00, 0x00, 0x00, 0x00,  // reserved
-        0x00, 0x00, 0x00, 0x00,  // reserved
-    };
-
-    // Checksum calculation
-    uint8_t ckA = 0, ckB = 0;
-    for (int i = 2; i < sizeof(setNav5) - 2; i++) {
-        ckA += setNav5[i];
-        ckB += ckA;
-    }
-    setNav5[sizeof(setNav5) - 2] = ckA;
-    setNav5[sizeof(setNav5) - 1] = ckB;
-
-    gpsSerial.write(setNav5, sizeof(setNav5));
-    Serial.println("Sent UBX-CFG-GNSS command.");
-}
+Signal konum;  // Konum verilerini tutmak için yapı oluşturma
 
 void setup() {
-    // Seri haberleşmeyi başlat
+    // Seri haberleşmeyi başlat (PC ile iletişim)
     Serial.begin(115200);
     while (!Serial) {
         ; // Seri portun bağlanmasını bekleyin
     }
 
-    // SPI arayüzünü doğru pin isimleri ile başlat
+    // SPI arayüzünü başlat (SD kart için)
     SPI.begin(HSPI_SCLK, HSPI_MISO, HSPI_MOSI, HSPI_CS);
     pinMode(HSPI_CS, OUTPUT);
 
-    // SD kartı başlat
+    // SD kartı başlatma
     Serial.print("SD kart başlatılıyor...");
     if (!SD.begin(HSPI_CS)) {
         Serial.println("SD kart başlatma başarısız oldu veya kart takılı değil.");
@@ -139,10 +102,17 @@ void setup() {
         Serial.println("SD kart başarıyla başlatıldı.");
         sdCardInitialized = true;
 
-        // Dosyayı oluşturma veya açma
-        dataFile = SD.open("/gpsdata.txt", FILE_WRITE);
+        // SD kartta dosya oluşturma veya mevcut dosyayı belirleme
+        int fileIndex = 0;
+        while (SD.exists(currentFileName)) {
+            fileIndex++;
+            currentFileName = "/gpsdata" + String(fileIndex) + ".txt";
+        }
+
+        // Yeni dosyayı oluşturma
+        dataFile = SD.open(currentFileName, FILE_WRITE);
         if (dataFile) {
-            dataFile.println("Lat,Lng,Altitude,Speed,Satellites,HDOP,Timestamp,AccelX,AccelY,AccelZ,GyroX,GyroY,GyroZ"); // Başlık satırını yazma
+            dataFile.println("Lat,Lng,Altitude,Speed,Satellites,HDOP,Timestamp,AccelX,AccelY,AccelZ,GyroX,GyroY,GyroZ"); // Başlık satırı
             dataFile.close();
         } else {
             Serial.println("Dosya oluşturulamadı!");
@@ -150,32 +120,28 @@ void setup() {
         }
     }
 
-    // GPS modülü ve diğer sensörlerin başlatılması
+    // GPS modülünün seri haberleşmesini başlatma
     gpsSerial.begin(9600, SERIAL_8N1, RXD_PIN, TXD_PIN);
-    Wire.begin();
+    Wire.begin();  // MPU6050 için I2C haberleşme başlatma
 
     Serial.println("Starting setup...");
 
+    // GPS modülü başlatma kontrolü
     if (myGPS.begin(gpsSerial)) {
         Serial.println("GPS initialized successfully.");
     } else {
         Serial.println("GPS initialization failed.");
     }
 
-    // GPS modülünün baud hızını 115200'e değiştirme
+    // GPS modülünün baud hızını artırma
     myGPS.setSerialRate(115200);
     gpsSerial.updateBaudRate(115200);
     Serial.println("Baud rate set to 115200.");
 
-
-
-    // GNSS yapılandırmasını genişletmek için UBX-CFG-GNSS komutunu gönder
-    configureGNSS();
-
-    // MPU6050 Başlatma
+    // MPU6050 sensörünü başlatma
     if (!mpu.begin()) {
         Serial.println("MPU6050 initialization failed!");
-        while (1);
+        while (1); // Başarısız olursa sonsuza kadar bekler
     }
     Serial.println("MPU6050 initialized successfully.");
     mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
@@ -186,12 +152,14 @@ void setup() {
 }
 
 void loop() {
-    // GPS verilerini okuma ve işleme
+    // GPS verilerini okuma ve çözme
     while (gpsSerial.available() > 0) {
         gps.encode(gpsSerial.read());
     }
 
+    // GPS konumu güncellenmişse verileri işleme
     if (gps.location.isUpdated()) {
+        // GPS verilerini al
         float latitude = gps.location.lat();
         float longitude = gps.location.lng();
         float altitude = gps.altitude.meters();
@@ -199,13 +167,19 @@ void loop() {
         int satellites = gps.satellites.value();
         float hdop = gps.hdop.hdop();
 
-        snprintf(konum.lat, 10, "%f", latitude); snprintf(konum.lng, 10, "%f", longitude); snprintf(konum.altitude, 10, "%f", altitude); snprintf(konum.speed, 10, "%f", speed); snprintf(konum.satellites, 4, "%d", satellites); snprintf(konum.hdop, 5, "%f", hdop); snprintf(konum.timestamp, 20, "%04d-%02d-%02d %02d:%02d:%02d", gps.date.year(), gps.date.month(), gps.date.day(), gps.time.hour(), gps.time.minute(), gps.time.second());
+        // GPS verilerini konum yapısına yazma
+        snprintf(konum.lat, 10, "%f", latitude); 
+        snprintf(konum.lng, 10, "%f", longitude); 
+        snprintf(konum.altitude, 10, "%f", altitude); 
+        snprintf(konum.speed, 10, "%f", speed); 
+        snprintf(konum.satellites, 4, "%d", satellites); 
+        snprintf(konum.hdop, 5, "%f", hdop); 
+        snprintf(konum.timestamp, 20, "%04d-%02d-%02d %02d:%02d:%02d", gps.date.year(), gps.date.month(), gps.date.day(), gps.time.hour(), gps.time.minute(), gps.time.second());
 
-
-        // MPU6050 sensöründen veri okuma
+        // MPU6050 sensöründen ivme ve gyro verilerini okuma
         sensors_event_t a, g, temp;
         mpu.getEvent(&a, &g, &temp);
-                konum.accelX = a.acceleration.x;
+        konum.accelX = a.acceleration.x;
         konum.accelY = a.acceleration.y;
         konum.accelZ = a.acceleration.z;
         konum.gyroX = g.gyro.x;
@@ -215,15 +189,29 @@ void loop() {
         // Verileri seri monitöre yazdırma
         Serial.println(String(konum.lat) + "," + String(konum.lng) + "," + String(konum.altitude) + "," + String(konum.speed) + "," + String(konum.satellites) + "," + String(konum.hdop) + "," + String(konum.timestamp) + "," + String(konum.accelX) + "," + String(konum.accelY) + "," + String(konum.accelZ) + "," + String(konum.gyroX) + "," + String(konum.gyroY) + "," + String(konum.gyroZ));
 
-        // Eğer SD kart başlatıldıysa, verileri SD karta yaz
+        // Eğer SD kart başlatıldıysa verileri SD karta yazma
         if (sdCardInitialized) {
-            dataFile = SD.open("/gpsdata.txt", FILE_APPEND); // Dosya ekleme modu
+            dataFile = SD.open(currentFileName, FILE_APPEND); // Dosya ekleme modu
             if (dataFile) {
                 dataFile.println(String(konum.lat) + "," + String(konum.lng) + "," + String(konum.altitude) + "," + String(konum.speed) + "," + String(konum.satellites) + "," + String(konum.hdop) + "," + String(konum.timestamp) + "," + String(konum.accelX) + "," + String(konum.accelY) + "," + String(konum.accelZ) + "," + String(konum.gyroX) + "," + String(konum.gyroY) + "," + String(konum.gyroZ)); 
                 dataFile.close();
             } else {
                 Serial.println("Veri dosyasını açma hatası!");
             }
+        }
+    }
+}
+
+void setFileName(String fileName) {
+    currentFileName = fileName;
+    // Yeni dosyayı başlık satırıyla oluşturma
+    if (sdCardInitialized) {
+        dataFile = SD.open(currentFileName, FILE_WRITE);
+        if (dataFile) {
+            dataFile.println("Lat,Lng,Altitude,Speed,Satellites,HDOP,Timestamp,AccelX,AccelY,AccelZ,GyroX,GyroY,GyroZ"); // Başlık satırı
+            dataFile.close();
+        } else {
+            Serial.println("Yeni dosya oluşturulamadı!");
         }
     }
 }
